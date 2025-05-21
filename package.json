@@ -6,7 +6,9 @@
     "build": "tsc",
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "dev": "cross-env NODE_ENV=development ts-node src/server.ts",
-    "lint": "biome check . --fix"
+    "lint": "biome check .",
+    "format": "biome check . --write",
+    "test": "cross-env NODE_ENV=development vitest run"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -21,9 +23,12 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/mongoose": "^5.11.96",
     "@types/node": "^22.15.21",
+    "@types/supertest": "^6.0.3",
     "cross-env": "^7.0.3",
     "mongodb-memory-server": "^10.1.4",
+    "supertest": "^7.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
   }
 }
