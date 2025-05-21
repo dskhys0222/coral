@@ -11,19 +11,32 @@ export interface Config {
     saltRounds: number;
   };
 }
+const getMongoUrl = async (): Promise<string> => {
+  console.debug("NODE_ENV: ", process.env.NODE_ENV);
+  if (process.env.NODE_ENV === "development") {
+    const { MongoMemoryServer } = require("mongodb-memory-server");
+    const mongod = await MongoMemoryServer.create();
+    return mongod.getUri();
+  }
+  return process.env.MONGO_URL || "mongodb:27017/mydb";
+};
 
-const CONFIG: Config = {
-  port: process.env.PORT || 3000,
-  mongodb: {
-    url: process.env.MONGO_URL || "mongodb:27017/mydb",
+const CONFIG: Config & { getMongoUrl: () => Promise<string> } = {
+  ...{
+    port: process.env.PORT || 3000,
+    mongodb: {
+      url: process.env.MONGO_URL || "mongodb:27017/mydb",
+    },
+    jwt: {
+      secret:
+        process.env.JWT_SECRET || "default_insecure_secret_for_development",
+      expiresIn: "1h",
+    },
+    security: {
+      saltRounds: 10,
+    },
   },
-  jwt: {
-    secret: process.env.JWT_SECRET || "default_insecure_secret_for_development",
-    expiresIn: "1h",
-  },
-  security: {
-    saltRounds: 10,
-  },
+  getMongoUrl,
 };
 
 if (!process.env.JWT_SECRET) {

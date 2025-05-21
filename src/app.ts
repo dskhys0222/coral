@@ -13,9 +13,13 @@ app.use(express.json());
 app.use(routes);
 
 // MongoDB接続
-mongoose
-  .connect(CONFIG.mongodb.url)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error: ", err));
+(async () => {
+  const mongoUrl = await CONFIG.getMongoUrl();
+  console.debug("MongoDB URL: ", mongoUrl);
+  mongoose
+    .connect(mongoUrl)
+    .then(() => console.log("MongoDB connected"))
+    .catch((err) => console.error("MongoDB connection error: ", err));
+})();
 
 export default app;
