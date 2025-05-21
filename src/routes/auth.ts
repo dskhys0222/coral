@@ -11,6 +11,26 @@ const router = Router();
 
 /**
  * ユーザー登録エンドポイント
+ * @openapi
+ * /register:
+ *   post:
+ *     summary: ユーザー登録
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered
+ *       409:
+ *         description: Username already exists
  */
 router.post("/register", async (req: Request, res: Response) => {
   if (!validateRequest(req, res, ["username", "password"])) {
@@ -43,6 +63,33 @@ router.post("/register", async (req: Request, res: Response) => {
 
 /**
  * ログインエンドポイント
+ * @openapi
+ * /login:
+ *   post:
+ *     summary: ログイン
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: JWTトークンを返す
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *       401:
+ *         description: Invalid credentials
  */
 router.post("/login", async (req: Request, res: Response) => {
   if (!validateRequest(req, res, ["username", "password"])) {
@@ -94,6 +141,19 @@ router.post("/logout", (req: Request, res: Response) => {
 
 /**
  * 認証テスト用エンドポイント
+ * @openapi
+ * /auth:
+ *   get:
+ *     summary: 認証テスト用エンドポイント
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Hello + ユーザー名
+ *       401:
+ *         description: No token
+ *       403:
+ *         description: Invalid token
  */
 router.get("/auth", auth, (req: AuthRequest, res: Response) => {
   res.send(`Hello ${req.user?.username}`);

@@ -1,6 +1,5 @@
 import express from "express";
 import mongoose from "mongoose";
-
 import CONFIG from "./config";
 import routes from "./routes";
 

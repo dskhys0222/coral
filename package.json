@@ -5,16 +5,19 @@
   "scripts": {
     "build": "tsc",
     "start": "cross-env NODE_ENV=production node dist/server.js",
-    "dev": "cross-env NODE_ENV=development ts-node src/server.ts",
+    "dev": "cross-env NODE_ENV=development tsx watch src/server.ts",
     "lint": "biome check .",
     "format": "biome check . --write",
-    "test": "cross-env NODE_ENV=development vitest run"
+    "test": "cross-env NODE_ENV=development vitest run",
+    "openapi": "npx tsx scripts/openapi.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.15.0"
+    "mongoose": "^8.15.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -24,10 +27,13 @@
     "@types/mongoose": "^5.11.96",
     "@types/node": "^22.15.21",
     "@types/supertest": "^6.0.3",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "cross-env": "^7.0.3",
+    "js-yaml": "^4.1.0",
     "mongodb-memory-server": "^10.1.4",
     "supertest": "^7.1.1",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"
   }
