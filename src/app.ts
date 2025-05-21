@@ -1,3 +1,4 @@
+import cors from "cors";
 import express from "express";
 import mongoose from "mongoose";
 import CONFIG from "./config";
@@ -7,6 +8,7 @@ const app = express();
 
 // ミドルウェア
 app.use(express.json());
+app.use(cors());
 
 // ルート
 app.use(routes);
