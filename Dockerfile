@@ -10,4 +10,4 @@ COPY . .
 RUN npm run build
 RUN npm ci --omit=dev
 
-CMD ["node", "dist/app.js"]
+CMD ["node", "dist/server.js"]
