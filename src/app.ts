@@ -14,7 +14,6 @@ app.use(routes);
 // MongoDB接続
 (async () => {
   const mongoUrl = await CONFIG.getMongoUrl();
-  console.debug("MongoDB URL: ", mongoUrl);
   mongoose
     .connect(mongoUrl)
     .then(() => console.log("MongoDB connected"))

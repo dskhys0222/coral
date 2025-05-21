@@ -10,7 +10,7 @@ const swaggerOptions = {
       description: "Coral API documentation",
     },
   },
-  apis: ["./src/routes/*.ts", "./src/models/*.ts"],
+  apis: ["./src/routes/**/*.ts", "./src/models/**/*.ts"],
 };
 
 export const swaggerSpec = swaggerJsdoc(swaggerOptions);

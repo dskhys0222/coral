@@ -12,7 +12,6 @@ export interface Config {
   };
 }
 const getMongoUrl = async (): Promise<string> => {
-  console.debug("NODE_ENV: ", process.env.NODE_ENV);
   if (process.env.NODE_ENV === "development") {
     const { MongoMemoryServer } = require("mongodb-memory-server");
     const mongod = await MongoMemoryServer.create();

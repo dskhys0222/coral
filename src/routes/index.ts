@@ -1,18 +1,25 @@
 import { type Request, type Response, Router } from "express";
-import authRoutes from "./auth";
+import { auth } from "../middleware/auth";
+import authRoutes from "./auth/auth";
+import taskRoutes from "./auth/task";
+import publicRoutes from "./public";
 import { swaggerSpec, swaggerUi } from "./swagger";
 
 const router = Router();
 
-// Swagger UI
-router.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// ホームページ
 router.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
 
-// 認証関連のルートをマウント
-router.use("/", authRoutes);
+// OpenAPI
+router.use("/openapi", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// public: 認証不要API
+router.use("/public", publicRoutes);
+
+// auth: 認証必須API
+router.use("/auth", auth);
+router.use("/auth", authRoutes);
+router.use("/auth", taskRoutes);
 
 export default router;
