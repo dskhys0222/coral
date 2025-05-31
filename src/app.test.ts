@@ -219,7 +219,10 @@ describe("リフレッシュトークンAPI", () => {
     const res = await request(app).post("/public/refresh").send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("refreshToken is required");
+    expect(res.body.message).toBe("バリデーションエラー");
+    expect(res.body.details).toBeDefined();
+    expect(res.body.details[0].field).toBe("refreshToken");
+    expect(res.body.details[0].message).toBe("Required");
   });
 });
 
@@ -416,6 +419,9 @@ describe("複数デバイス対応API", () => {
     const res = await request(app).post("/public/logout-all").send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("refreshToken is required");
+    expect(res.body.message).toBe("バリデーションエラー");
+    expect(res.body.details).toBeDefined();
+    expect(res.body.details[0].field).toBe("refreshToken");
+    expect(res.body.details[0].message).toBe("Required");
   });
 });

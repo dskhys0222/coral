@@ -1,6 +1,12 @@
 import { type Response, Router } from "express";
 import type { AuthRequest } from "../../middleware/auth";
+import { validateBody, validateParams } from "../../middleware/validation";
 import { Task } from "../../models/task";
+import {
+  createTaskSchema,
+  taskIdSchema,
+  updateTaskSchema,
+} from "../../schemas/task";
 import { sendError } from "../../utils";
 
 const router = Router();
@@ -70,26 +76,27 @@ router.get("/tasks", async (req: AuthRequest, res: Response) => {
  *       401:
  *         description: 認証エラー
  */
-router.post("/tasks", async (req: AuthRequest, res: Response) => {
-  const { encryptedData } = req.body;
-  const username = req.user?.username;
-  if (!encryptedData) {
-    sendError(res, 400, "encryptedData are required");
-    return;
-  }
-  try {
-    const task = new Task({ username, encryptedData });
-    await task.save();
-    res.status(201).json(task);
-  } catch (err) {
-    sendError(
-      res,
-      500,
-      "Failed to create task",
-      err instanceof Error ? err : new Error(String(err)),
-    );
-  }
-});
+router.post(
+  "/tasks",
+  validateBody(createTaskSchema),
+  async (req: AuthRequest, res: Response) => {
+    const { encryptedData } = req.body;
+    const username = req.user?.username;
+
+    try {
+      const task = new Task({ username, encryptedData });
+      await task.save();
+      res.status(201).json(task);
+    } catch (err) {
+      sendError(
+        res,
+        500,
+        "Failed to create task",
+        err instanceof Error ? err : new Error(String(err)),
+      );
+    }
+  },
+);
 
 /**
  * @openapi
@@ -130,33 +137,35 @@ router.post("/tasks", async (req: AuthRequest, res: Response) => {
  *       404:
  *         description: タスクが存在しない
  */
-router.put("/tasks/:id", async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-  const { encryptedData } = req.body;
-  if (!encryptedData) {
-    sendError(res, 400, "encryptedData is required");
-    return;
-  }
-  try {
-    const task = await Task.findByIdAndUpdate(
-      id,
-      { encryptedData },
-      { new: true },
-    );
-    if (!task) {
-      sendError(res, 404, "Task not found");
-      return;
+router.put(
+  "/tasks/:id",
+  validateParams(taskIdSchema),
+  validateBody(updateTaskSchema),
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { encryptedData } = req.body;
+
+    try {
+      const task = await Task.findByIdAndUpdate(
+        id,
+        { encryptedData },
+        { new: true },
+      );
+      if (!task) {
+        sendError(res, 404, "Task not found");
+        return;
+      }
+      res.json(task);
+    } catch (err) {
+      sendError(
+        res,
+        500,
+        "Failed to update task",
+        err instanceof Error ? err : new Error(String(err)),
+      );
     }
-    res.json(task);
-  } catch (err) {
-    sendError(
-      res,
-      500,
-      "Failed to update task",
-      err instanceof Error ? err : new Error(String(err)),
-    );
-  }
-});
+  },
+);
 
 /**
  * @openapi
@@ -189,23 +198,28 @@ router.put("/tasks/:id", async (req: AuthRequest, res: Response) => {
  *       404:
  *         description: タスクが存在しない
  */
-router.delete("/tasks/:id", async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-  try {
-    const task = await Task.findByIdAndDelete(id);
-    if (!task) {
-      sendError(res, 404, "Task not found");
-      return;
+router.delete(
+  "/tasks/:id",
+  validateParams(taskIdSchema),
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    try {
+      const task = await Task.findByIdAndDelete(id);
+      if (!task) {
+        sendError(res, 404, "Task not found");
+        return;
+      }
+      res.json({ message: "Task deleted" });
+    } catch (err) {
+      sendError(
+        res,
+        500,
+        "Failed to delete task",
+        err instanceof Error ? err : new Error(String(err)),
+      );
     }
-    res.json({ message: "Task deleted" });
-  } catch (err) {
-    sendError(
-      res,
-      500,
-      "Failed to delete task",
-      err instanceof Error ? err : new Error(String(err)),
-    );
-  }
-});
+  },
+);
 
 export default router;
