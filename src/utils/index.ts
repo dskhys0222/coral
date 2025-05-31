@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Request, Response } from "express";
 
 /**
@@ -38,4 +39,13 @@ export const validateRequest = (
     }
   }
   return true;
+};
+
+/**
+ * 暗号学的に安全なランダム文字列を生成
+ * @param length バイト長
+ * @returns ランダム文字列（hex形式）
+ */
+export const generateSecureRandomString = (length = 32) => {
+  return randomBytes(length).toString("hex");
 };

@@ -3,9 +3,13 @@ import { type Request, type Response, Router } from "express";
 import jwt from "jsonwebtoken";
 
 import CONFIG from "../config";
-import type { JwtPayload } from "../middleware/auth";
+import type { JwtPayload, RefreshJwtPayload } from "../middleware/auth";
 import { User } from "../models/user";
-import { sendError, validateRequest } from "../utils";
+import {
+  generateSecureRandomString,
+  sendError,
+  validateRequest,
+} from "../utils";
 
 const router = Router();
 
@@ -73,14 +77,18 @@ router.post("/register", async (req: Request, res: Response) => {
  *             $ref: '#/components/schemas/User'
  *     responses:
  *       200:
- *         description: JWTトークン
+ *         description: アクセストークンとリフレッシュトークン
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 token:
+ *                 accessToken:
  *                   type: string
+ *                   description: アクセストークン（短期間有効）
+ *                 refreshToken:
+ *                   type: string
+ *                   description: リフレッシュトークン（長期間有効）
  *       401:
  *         description: Invalid credentials
  */
@@ -98,14 +106,234 @@ router.post("/login", async (req: Request, res: Response) => {
       sendError(res, 401, "Invalid credentials");
       return;
     }
-    const payload: JwtPayload = { username };
-    const token = jwt.sign(payload, CONFIG.jwt.secret);
-    res.json({ token });
+
+    // アクセストークンを生成
+    const accessPayload: JwtPayload = { username };
+    const accessToken = jwt.sign(accessPayload, CONFIG.jwt.secret);
+
+    // リフレッシュトークンを生成
+    const tokenId = generateSecureRandomString();
+    const refreshPayload: RefreshJwtPayload = { username, tokenId };
+    const refreshToken = jwt.sign(refreshPayload, CONFIG.jwt.refreshSecret);
+
+    // リフレッシュトークンを配列に追加
+    if (!user.refreshTokens) user.refreshTokens = [];
+    user.refreshTokens.push({
+      token: refreshToken,
+      tokenId: tokenId,
+      deviceInfo: req.get("User-Agent") || "Unknown",
+      createdAt: new Date(),
+      lastUsed: new Date(),
+    });
+
+    // 古いトークンを削除（5個以上は古いものから削除）
+    if (user.refreshTokens.length > 5) {
+      user.refreshTokens = user.refreshTokens.slice(-5);
+    }
+
+    await user.save();
+
+    res.json({ accessToken, refreshToken });
   } catch (err) {
     sendError(
       res,
       500,
       "Login failed",
+      err instanceof Error ? err : new Error(String(err)),
+    );
+  }
+});
+
+/**
+ * @openapi
+ * /public/refresh:
+ *   post:
+ *     summary: リフレッシュトークンを使用してアクセストークンを更新
+ *     tags:
+ *      - public
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: リフレッシュトークン
+ *             required:
+ *               - refreshToken
+ *     responses:
+ *       200:
+ *         description: 新しいアクセストークン
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   description: 新しいアクセストークン
+ *       401:
+ *         description: Invalid refresh token
+ */
+router.post("/refresh", async (req: Request, res: Response) => {
+  if (!validateRequest(req, res, ["refreshToken"])) return;
+  const { refreshToken } = req.body;
+
+  try {
+    // リフレッシュトークンを検証
+    const decoded = jwt.verify(
+      refreshToken,
+      CONFIG.jwt.refreshSecret,
+    ) as RefreshJwtPayload;
+
+    // データベースからユーザーとリフレッシュトークンを確認
+    const user = await User.findOne({
+      username: decoded.username,
+      "refreshTokens.token": refreshToken,
+    });
+
+    if (!user) {
+      sendError(res, 401, "Invalid refresh token");
+      return;
+    }
+
+    // 使用時刻を更新
+    const tokenIndex = user.refreshTokens?.findIndex(
+      (t) => t.token === refreshToken,
+    );
+    if (tokenIndex !== undefined && tokenIndex !== -1 && user.refreshTokens) {
+      user.refreshTokens[tokenIndex].lastUsed = new Date();
+      await user.save();
+    }
+
+    // 新しいアクセストークンを生成
+    const accessPayload: JwtPayload = { username: decoded.username };
+    const accessToken = jwt.sign(accessPayload, CONFIG.jwt.secret);
+
+    res.json({ accessToken });
+  } catch (err) {
+    sendError(
+      res,
+      401,
+      "Invalid refresh token",
+      err instanceof Error ? err : new Error(String(err)),
+    );
+  }
+});
+
+/**
+ * @openapi
+ * /public/logout:
+ *   post:
+ *     summary: ログアウト（リフレッシュトークンを無効化）
+ *     tags:
+ *      - public
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: リフレッシュトークン
+ *             required:
+ *               - refreshToken
+ *     responses:
+ *       200:
+ *         description: ログアウト成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.post("/logout", async (req: Request, res: Response) => {
+  if (!validateRequest(req, res, ["refreshToken"])) return;
+  const { refreshToken } = req.body;
+
+  try {
+    // リフレッシュトークンを検証
+    const decoded = jwt.verify(
+      refreshToken,
+      CONFIG.jwt.refreshSecret,
+    ) as RefreshJwtPayload;
+
+    // データベースから特定のリフレッシュトークンを削除
+    await User.updateOne(
+      { username: decoded.username },
+      { $pull: { refreshTokens: { token: refreshToken } } },
+    );
+
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    sendError(
+      res,
+      401,
+      "Invalid refresh token",
+      err instanceof Error ? err : new Error(String(err)),
+    );
+  }
+});
+
+/**
+ * @openapi
+ * /public/logout-all:
+ *   post:
+ *     summary: 全デバイスからログアウト（全リフレッシュトークンを無効化）
+ *     tags:
+ *      - public
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: リフレッシュトークン
+ *             required:
+ *               - refreshToken
+ *     responses:
+ *       200:
+ *         description: 全デバイスからログアウト成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.post("/logout-all", async (req: Request, res: Response) => {
+  if (!validateRequest(req, res, ["refreshToken"])) return;
+  const { refreshToken } = req.body;
+
+  try {
+    // リフレッシュトークンを検証
+    const decoded = jwt.verify(
+      refreshToken,
+      CONFIG.jwt.refreshSecret,
+    ) as RefreshJwtPayload;
+
+    // 全てのリフレッシュトークンを削除
+    await User.updateOne(
+      { username: decoded.username },
+      { $unset: { refreshTokens: 1 } },
+    );
+
+    res.json({ message: "Logged out from all devices successfully" });
+  } catch (err) {
+    sendError(
+      res,
+      401,
+      "Invalid refresh token",
       err instanceof Error ? err : new Error(String(err)),
     );
   }

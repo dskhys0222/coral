@@ -6,6 +6,8 @@ export interface Config {
   jwt: {
     secret: string;
     expiresIn: string;
+    refreshSecret: string;
+    refreshExpiresIn: string;
   };
   security: {
     saltRounds: number;
@@ -29,7 +31,11 @@ const CONFIG: Config & { getMongoUrl: () => Promise<string> } = {
     jwt: {
       secret:
         process.env.JWT_SECRET || "default_insecure_secret_for_development",
-      expiresIn: "1h",
+      expiresIn: "15m", // アクセストークンは短めに
+      refreshSecret:
+        process.env.JWT_REFRESH_SECRET ||
+        "default_insecure_refresh_secret_for_development",
+      refreshExpiresIn: "7d", // リフレッシュトークンは長めに
     },
     security: {
       saltRounds: 10,
@@ -43,6 +49,14 @@ if (!process.env.JWT_SECRET) {
     "警告: 環境変数JWT_SECRETが設定されていません。" +
       "開発用のデフォルトシークレットを使用します。" +
       "本番環境では必ずGitHubのシークレットなどで適切なJWT_SECRETを設定してください。",
+  );
+}
+
+if (!process.env.JWT_REFRESH_SECRET) {
+  console.warn(
+    "警告: 環境変数JWT_REFRESH_SECRETが設定されていません。" +
+      "開発用のデフォルトリフレッシュシークレットを使用します。" +
+      "本番環境では必ずGitHubのシークレットなどで適切なJWT_REFRESH_SECRETを設定してください。",
   );
 }
 
